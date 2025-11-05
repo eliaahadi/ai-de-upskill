@@ -1,0 +1,24 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+*.eggs/
+
+# Virtual environments
+.venv/
+.env/
+.env.*
+
+# macOS
+.DS_Store
+
+# Project artifacts
+de_pipeline/duckdb/*.duckdb
+de_pipeline/duckdb/*.db
+ai_rag_app/vectorstore/
+logs/
+runs/
+
+# Streamlit cache
+.streamlit/
