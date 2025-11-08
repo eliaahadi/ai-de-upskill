@@ -1,5 +1,7 @@
 # 2-week ai + data engineering upskill plan
 
+Two small projects in one repo, tuned for a 2‑week daily plan. Local‑first, $0 stack on macOS.
+
 Focus
 - Build a small data engineering pipeline with DuckDB, Polars, validation, orchestration, and a Streamlit dashboard.
 - Build a minimal RAG microservice with FastAPI, Chroma, sentence-transformers, and an optional Streamlit UI.
@@ -11,6 +13,24 @@ Repo
   - `ai_rag_app/`
 
 ---
+## Quickstart
+
+```
+# 1) create venv and install
+uv venv
+uv sync --all-extras
+pre-commit install
+
+# 2) smoke test
+uv run pytest -q
+
+# 3) run empty dashboard (Day 1 check)
+make run-de
+
+# 4) run RAG API health (Day 8 check)
+make run-rag
+# visit http://127.0.0.1:8000/health
+```
 
 ## day 1 – environment and scaffolding
 
