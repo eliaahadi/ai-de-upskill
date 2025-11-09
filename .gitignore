@@ -22,3 +22,6 @@ runs/
 
 # Streamlit cache
 .streamlit/
+
+
+*.parquet

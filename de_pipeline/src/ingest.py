@@ -18,15 +18,21 @@ def _read_csv_files(raw_dir: pathlib.Path) -> list[pl.DataFrame]:
         df = pl.read_csv(file)
 
         # Light, generic cleanup
-        # Strip whitespace in string columns
+        # Strip leading/trailing whitespace in string columns in a way
+        # that is compatible across Polars versions: use a regex to
+        # remove leading/trailing whitespace.
         str_cols = [c for c, dt in zip(df.columns, df.dtypes) if dt == pl.Utf8]
         if str_cols:
-            df = df.with_columns([pl.col(str_cols).str.strip()])
+            df = df.with_columns([pl.col(str_cols).str.replace_all(r"^\s+|\s+$", "")])
 
         # If a posted_date column exists, parse it to Date
         if "posted_date" in df.columns:
+            # Trim whitespace then parse to Date; use regex trim for broad
+            # compatibility with different Polars versions.
             df = df.with_columns(
-                pl.col("posted_date").str.strip().str.strptime(pl.Date, strict=False)
+                pl.col("posted_date")
+                .str.replace_all(r"^\s+|\s+$", "")
+                .str.strptime(pl.Date, strict=False)
             )
 
         dataframes.append(df)
@@ -70,10 +76,7 @@ def ingest_raw_to_stage(raw_dir: str | pathlib.Path, staged_dir: str | pathlib.P
 
         out_path = staged_dir / staged_name
         df.write_parquet(out_path)
-        print(
-            f"[ingest] Wrote {df.height} rows x {df.width} cols "
-            f"to {out_path.name}"
-        )
+        print(f"[ingest] Wrote {df.height} rows x {df.width} cols " f"to {out_path.name}")
 
     print("[ingest] Completed Day 2 staging successfully.")
 
