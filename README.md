@@ -32,6 +32,45 @@ make run-rag
 # visit http://127.0.0.1:8000/health
 ```
 
+# project overview
+
+You have two small projects in one workspace. Everything runs locally with uv.
+
+- `de_pipeline` batch pipeline using DuckDB and Polars with a Streamlit dashboard
+- `ai_rag_app` minimal RAG service with FastAPI and Chroma (wired on days 8–12)
+
+### data engineering flow
+graph LR
+A[Raw CSV in data/raw] --> B[Polars ingest]
+B --> C[Staged parquet in data/staged]
+C --> D[DuckDB view stg_jobs]
+D --> E[dim_company • dim_location • dim_job_title]
+D --> F[fact_job_postings]
+F --> G[Streamlit dashboard]
+
+### rag microservice
+graph LR
+D[Docs in data/docs] --> CH[Chunker]
+CH --> EM[Embeddings]
+EM --> VS[Chroma vector store]
+Q[User question] --> R[Retriever]
+R --> CTX[Top-k context]
+CTX --> LLM[Generator]
+LLM --> A[Answer + sources]
+## quick start
+
+```bash
+uv venv
+uv sync --all-extras
+pre-commit install
+
+# build warehouse and run tests
+uv run python -m de_pipeline.flows.flow
+uv run pytest -q
+
+# run dashboard
+uv run streamlit run de_pipeline/app.py
+
 ## day 1 – environment and scaffolding
 
 **Goal** have the workspace running tests and UIs booting.

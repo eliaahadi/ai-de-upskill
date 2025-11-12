@@ -7,8 +7,12 @@ from prefect import flow, task
 from de_pipeline.src.ingest import ingest_raw_to_stage
 from de_pipeline.src.transform import build_models
 
+from datetime import datetime
+import json
 
 BASE_DIR = Path(__file__).resolve().parents[1]
+LOGS_DIR = BASE_DIR / "logs"
+LOGS_DIR.mkdir(exist_ok=True)
 RAW_DIR = BASE_DIR / "data" / "raw"
 STAGED_DIR = BASE_DIR / "data" / "staged"
 WAREHOUSE_DIR = BASE_DIR / "duckdb"
@@ -47,6 +51,17 @@ def run_flow(
 
     t_ingest_raw(raw_dir, staged_dir)
     t_build_models(warehouse_dir)
+
+    # write a small run log
+    run_log = {
+        "run_at": datetime.utcnow().isoformat() + "Z",
+        "raw_dir": str(raw_dir),
+        "staged_dir": str(staged_dir),
+        "warehouse_dir": str(warehouse_dir),
+    }
+    (LOGS_DIR / f"run_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json").write_text(
+        json.dumps(run_log, indent=2)
+    )
 
     print("[flow] Pipeline completed successfully.")
 

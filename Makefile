@@ -20,3 +20,21 @@ run-rag:
 
 index-rag:
 	uv run python -m ai_rag_app.src.index_docs
+
+
+---
+
+## add make targets
+
+Append these to your root `Makefile` (keep existing ones).
+
+```make
+clean:
+	@echo "Cleaning local artifacts"
+	rm -rf de_pipeline/duckdb/*.duckdb de_pipeline/data/staged/*.parquet ai_rag_app/vectorstore logs runs || true
+
+reset: clean
+	uv run python -m de_pipeline.flows.flow
+
+docs:
+	@echo "Docs live in ./docs. Render Mermaid in VS Code with a Mermaid plugin, or keep as markdown."
