@@ -40,13 +40,3 @@ target-version = ["py310"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-
-[tool.uv.scripts]
-test = "pytest -q"
-de-app = "streamlit run de_pipeline/app.py"
-flow = "python -m de_pipeline.flows.flow"
-rag-serve = "uvicorn ai_rag_app.src.service:app --reload"
-rag-ui = "streamlit run ai_rag_app/ui_app.py"
-rag-index = "python -m ai_rag_app.src.index_docs"
-lint = "ruff check . && black --check ."
-fmt = "ruff check . --fix && black ."

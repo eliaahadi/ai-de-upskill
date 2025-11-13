@@ -1,5 +1,7 @@
 # 2-week ai + data engineering upskill plan
 
+[![CI](https://github.com/eliaahadi/ai-de-upskill/actions/workflows/ci.yml/badge.svg)](https://github.com/eliaahadi/ai-de-upskill/actions)
+
 Two small projects in one repo, tuned for a 2‑week daily plan. Local‑first, $0 stack on macOS.
 
 Focus
