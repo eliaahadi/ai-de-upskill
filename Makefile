@@ -12,7 +12,7 @@ RAG_INDEX := $(PY) -m ai_rag_app.src.index_docs
 LINT := ruff check . && black --check .
 FMT := ruff check . --fix && black .
 
-.PHONY: test de-app flow rag-serve rag-ui rag-index lint fmt install-edit help clean reset docs
+.PHONY: test de-app flow rag-serve rag-ui rag-index lint fmt install-edit help clean reset docs run-de run-rag run-flow index-rag
 
 test:
 	$(TEST)
@@ -65,3 +65,12 @@ help:
 	@echo "  make lint        - run ruff + black checks"
 	@echo "  make fmt         - run ruff autofix + black format"
 	@echo "  make install-edit - install package in editable mode"
+
+# Backwards-compatible aliases (old Makefile used these names)
+run-de: de-app
+
+run-rag: rag-serve
+
+run-flow: flow
+
+index-rag: rag-index
