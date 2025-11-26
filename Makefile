@@ -74,3 +74,9 @@ run-rag: rag-serve
 run-flow: flow
 
 index-rag: rag-index
+
+run-rag-ui:
+	uv run streamlit run ai_rag_app/ui/app.py
+
+eval-rag:
+	uv run python -m ai_rag_app.src.eval_runner
