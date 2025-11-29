@@ -281,6 +281,7 @@ uv run streamlit run de_pipeline/app.py
   - `make de-docker`
   - `make rag-docker` (or similar).
 - Verify containers start and endpoints work locally.
+- Added MLFlow integration
 
 **Outcome**
 - Containerized versions that match your docs.
