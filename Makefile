@@ -80,3 +80,6 @@ run-rag-ui:
 
 eval-rag:
 	uv run python -m ai_rag_app.src.eval_runner
+
+mlflow-ui:
+	uv run mlflow ui --backend-store-uri $$MLFLOW_TRACKING_URI --port 5001

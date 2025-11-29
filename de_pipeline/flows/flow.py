@@ -6,11 +6,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from prefect import flow, task
+import mlflow
+import contextlib
 
 from de_pipeline.src.ingest import ingest_raw_to_stage
 from de_pipeline.src.transform import build_models
 from de_pipeline.src.metrics import write_metric
-
+from de_pipeline.src.mlflow_logger import maybe_init, log_params, log_metrics
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 RAW_DIR = BASE_DIR / "data" / "raw"
@@ -58,6 +60,23 @@ def run_flow(
     (LOGS_DIR / f"run_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json").write_text(
         json.dumps(run_log, indent=2)
     )
+
+    uri = maybe_init("de_pipeline")
+    if uri:
+        print(f"[flow] MLflow tracking at {uri}")
+    with mlflow.start_run(run_name="local_flow", nested=False) if uri else contextlib.nullcontext():
+        t_ingest_raw(Path(raw_dir), Path(staged_dir))
+        t_build_models(Path(warehouse_dir))
+        elapsed = time.perf_counter() - t0
+        log_params(
+            {
+                "raw_dir": str(raw_dir),
+                "staged_dir": str(staged_dir),
+                "warehouse_dir": str(warehouse_dir),
+            }
+        )
+        log_metrics({"flow_elapsed_s": round(elapsed, 3)})
+
     write_metric({"step": "flow", "elapsed_s": round(elapsed, 3)})
     print("[flow] completed")
 

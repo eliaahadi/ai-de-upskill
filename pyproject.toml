@@ -18,6 +18,7 @@ dependencies = [
     "sentence-transformers>=2.7.0",
     "langchain>=0.2.16",
     "pypdf>=4.3.1",
+    "mlflow>=3.6.0",
 ]
 
 [project.optional-dependencies]

@@ -35,7 +35,14 @@ jobs:
         run: python -m pip install --upgrade pip setuptools wheel
 
       - name: Install package and dev dependencies
-        run: python -m pip install -e '.[dev]'
+        # prefer binary wheels to avoid long Rust builds on CI runners
+        run: python -m pip install -e '.[dev]' --prefer-binary
+
+      - name: CI env diagnostics
+        run: |
+          python -V
+          python -m pip --version
+          python -m pip list --format=columns | sed -n '1,200p'
 
       - name: Run CI (lint + tests)
         env:

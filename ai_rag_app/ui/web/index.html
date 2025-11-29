@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>RAG demo</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; }
+    .row { display:flex; gap:1rem; align-items:center; }
+    textarea { width:100%; height: 100px; }
+    pre { white-space: pre-wrap; background:#f7f7f9; padding:1rem; border-radius:8px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: .5rem; }
+    th { background:#fafafa; }
+  </style>
+</head>
+<body>
+  <h1>RAG demo</h1>
+  <p>Backend: <code id="api-url"></code></p>
+  <div>
+    <label>Question</label>
+    <textarea id="q">What do these docs say about vector stores?</textarea>
+    <div class="row">
+      <label>Top-k</label>
+      <input id="k" type="number" min="1" max="10" value="5"/>
+      <label><input id="eval" type="checkbox" checked/> Compute eval</label>
+      <button id="ask">Ask</button>
+    </div>
+  </div>
+
+  <h2>Answer</h2>
+  <pre id="answer">—</pre>
+
+  <h2>Metrics</h2>
+  <div id="metrics">—</div>
+
+  <h2>Sources</h2>
+  <div id="sources">—</div>
+
+<script>
+  const API = localStorage.getItem("RAG_API_URL") || (location.origin.replace(/:\d+$/, ':8000'));
+  document.getElementById("api-url").textContent = API;
+
+  function td(txt){ const d=document.createElement('td'); d.textContent = txt ?? ''; return d; }
+
+  document.getElementById("ask").onclick = async () => {
+    const body = {
+      question: document.getElementById("q").value,
+      k: parseInt(document.getElementById("k").value, 10),
+      eval: document.getElementById("eval").checked
+    };
+    const r = await fetch(`${API}/ask`, {
+      method:"POST",
+      headers:{ "content-type":"application/json" },
+      body: JSON.stringify(body)
+    });
+    if(!r.ok){
+      document.getElementById("answer").textContent = `Error ${r.status}: ${await r.text()}`;
+      return;
+    }
+    const res = await r.json();
+    document.getElementById("answer").textContent = res.answer || '—';
+
+    const m = [];
+    m.push(`retrieved: ${res.retrieved}`);
+    m.push(`context_chars: ${res.context_chars}`);
+    if(res.eval){
+      m.push(`support_rate: ${res.eval.support_rate}`);
+      m.push(`q_ctx_cosine: ${res.eval.q_ctx_cosine}`);
+    }
+    document.getElementById("metrics").textContent = m.join(" | ");
+
+    const sDiv = document.getElementById("sources");
+    sDiv.innerHTML = "";
+    if(Array.isArray(res.sources) && res.sources.length){
+      const table = document.createElement("table");
+      const tr = document.createElement("tr");
+      ["source","chunk_index","id","distance","tokens_est"].forEach(h=>{
+        const th = document.createElement("th"); th.textContent=h; tr.appendChild(th);
+      });
+      table.appendChild(tr);
+      res.sources.forEach(src=>{
+        const row = document.createElement("tr");
+        row.appendChild(td(src.source));
+        row.appendChild(td(src.chunk_index));
+        row.appendChild(td(src.id));
+        row.appendChild(td(typeof src.distance === "number" ? src.distance.toFixed(3) : src.distance));
+        row.appendChild(td(src.tokens_est));
+        table.appendChild(row);
+      });
+      sDiv.appendChild(table);
+    } else {
+      sDiv.textContent = "—";
+    }
+  };
+</script>
+</body>
+</html>
