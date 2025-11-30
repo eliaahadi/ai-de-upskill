@@ -1,3 +1,5 @@
-# retrieval
+# sample
 
-Retrieval augmented generation uses top-k document chunks from a vector store to ground answers and provide citations.
+This is a tiny test document about vector stores and retrieval.
+
+RAG improves answers with sources.
