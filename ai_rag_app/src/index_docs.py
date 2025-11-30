@@ -1,12 +1,9 @@
-from __future__ import annotations
+from typing import Iterable, List, Optional
 from pathlib import Path
 import re
 import hashlib
-from typing import Iterable, List
-
 import chromadb
 from sentence_transformers import SentenceTransformer
-
 from .config import (
     DOCS_DIR,
     VSTORE_DIR,
@@ -16,6 +13,8 @@ from .config import (
     CHUNK_OVERLAP,
     BATCH_SIZE,
 )
+from filelock import FileLock
+
 
 # ---------- file reading ----------
 
@@ -83,7 +82,7 @@ def _sha256(text: str) -> str:
 
 
 def _chunk_ids(path: Path, n: int) -> List[str]:
-    # include file stem and index so re-indexing is idempotent
+    # include file stem and index so re-indexing idempotent
     base = path.stem
     return [f"{base}:{i}" for i in range(n)]
 
@@ -97,10 +96,15 @@ def _iter_docs(root: Path) -> Iterable[Path]:
         yield from root.rglob(ext)
 
 
-# ---------- main indexing ----------
-
-
-def build_index(docs_dir: str | Path = DOCS_DIR, persist_dir: str | Path = VSTORE_DIR) -> None:
+# ⬇️ NEW: parameterized builder
+def build_index_with_params(
+    docs_dir: str | Path = DOCS_DIR,
+    persist_dir: str | Path = VSTORE_DIR,
+    embed_model: Optional[str] = None,
+    chunk_size: Optional[int] = None,
+    chunk_overlap: Optional[int] = None,
+    batch_size: Optional[int] = None,
+) -> None:
     docs_dir, persist_dir = Path(docs_dir), Path(persist_dir)
     persist_dir.mkdir(parents=True, exist_ok=True)
     docs_dir.mkdir(parents=True, exist_ok=True)
@@ -108,7 +112,19 @@ def build_index(docs_dir: str | Path = DOCS_DIR, persist_dir: str | Path = VSTOR
     client = chromadb.PersistentClient(path=str(persist_dir))
     col = client.get_or_create_collection(COLLECTION_NAME)
 
-    model = SentenceTransformer(DEFAULT_EMBED_MODEL)
+    lock = FileLock(str(Path(persist_dir) / ".chroma.lock"))
+    with lock:
+        client = chromadb.PersistentClient(path=str(persist_dir))
+        col = client.get_or_create_collection(COLLECTION_NAME)
+        # ... rest of indexing & upserts ...
+
+    # use overrides or defaults
+    _embed_model = embed_model or DEFAULT_EMBED_MODEL
+    _chunk_size = chunk_size or CHUNK_SIZE
+    _chunk_overlap = chunk_overlap or CHUNK_OVERLAP
+    _batch = batch_size or BATCH_SIZE
+
+    model = SentenceTransformer(_embed_model)
 
     total_docs = 0
     total_chunks = 0
@@ -118,9 +134,8 @@ def build_index(docs_dir: str | Path = DOCS_DIR, persist_dir: str | Path = VSTOR
         raw = _read_doc(path)
         if not raw.strip():
             continue
-
         text = _normalize_ws(raw)
-        chunks = _chunk_paragraphs(text, CHUNK_SIZE, CHUNK_OVERLAP)
+        chunks = _chunk_paragraphs(text, _chunk_size, _chunk_overlap)
         if not chunks:
             continue
 
@@ -134,19 +149,20 @@ def build_index(docs_dir: str | Path = DOCS_DIR, persist_dir: str | Path = VSTOR
                     "chars": len(c),
                     "tokens_est": _est_tokens(len(c)),
                     "content_sha256": _sha256(c),
+                    "embed_model": _embed_model,
+                    "chunk_size": _chunk_size,
+                    "chunk_overlap": _chunk_overlap,
                 }
             )
 
-        # embed (normalize for cosine)
         embeddings = model.encode(chunks, normalize_embeddings=True).tolist()
 
-        # batched upsert
-        for i in range(0, len(chunks), BATCH_SIZE):
+        for i in range(0, len(chunks), _batch):
             col.upsert(
-                ids=ids[i : i + BATCH_SIZE],
-                documents=chunks[i : i + BATCH_SIZE],
-                embeddings=embeddings[i : i + BATCH_SIZE],
-                metadatas=metadatas[i : i + BATCH_SIZE],
+                ids=ids[i : i + _batch],
+                documents=chunks[i : i + _batch],
+                embeddings=embeddings[i : i + _batch],
+                metadatas=metadatas[i : i + _batch],
             )
 
         total_docs += 1
@@ -156,13 +172,11 @@ def build_index(docs_dir: str | Path = DOCS_DIR, persist_dir: str | Path = VSTOR
     avg_tokens = _est_tokens(total_chars / total_chunks) if total_chunks else 0
     print(
         f"[index] docs={total_docs} chunks={total_chunks} "
-        f"avg_tokens_per_chunk≈{avg_tokens} store={persist_dir}"
+        f"avg_tokens_per_chunk≈{avg_tokens} store={persist_dir} "
+        f"model={_embed_model} size={_chunk_size} overlap={_chunk_overlap}"
     )
 
 
-def main() -> None:
-    build_index()
-
-
-if __name__ == "__main__":
-    main()
+# keep the original name as a thin wrapper
+def build_index(docs_dir: str | Path = DOCS_DIR, persist_dir: str | Path = VSTORE_DIR) -> None:
+    build_index_with_params(docs_dir, persist_dir)
