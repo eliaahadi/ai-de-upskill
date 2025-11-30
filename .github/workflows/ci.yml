@@ -34,6 +34,22 @@ jobs:
       - name: Install build tools
         run: python -m pip install --upgrade pip setuptools wheel
 
+      - name: CI pre-install diagnostics
+        run: |
+          set -eux
+          echo "=== SYSTEM INFO ==="
+          uname -a
+          echo "=== Python / Pip ==="
+          python -V
+          python -m pip --version
+          echo "pip cache dir: $(python -c 'import pip, os; print(pip.cache.get_cache_dir())')"
+          echo "=== Rust toolchain (if present) ==="
+          if command -v rustc >/dev/null 2>&1; then rustc --version; else echo "rustc not found"; fi
+          echo "=== GitHub Actions environment variables ==="
+          echo "RUNNER_OS: $RUNNER_OS"
+          echo "RUNNER_TEMP: $RUNNER_TEMP"
+          echo "RUNNER_TOOL_CACHE: $RUNNER_TOOL_CACHE"
+
       - name: Pre-install heavy wheel packages
         # Install heavy packages individually using wheels to avoid building from source
         run: |
@@ -43,11 +59,19 @@ jobs:
         # prefer binary wheels to avoid long Rust builds on CI runners
         run: python -m pip install -e '.[dev]' --prefer-binary
 
-      - name: CI env diagnostics
+      - name: CI post-install diagnostics
         run: |
           python -V
           python -m pip --version
           python -m pip list --format=columns | sed -n '1,200p'
+          echo "=== Test presence of core packages ==="
+          python - <<'PY'
+          import importlib
+          pkgs = ['polars','chromadb','sentence_transformers','mlflow','pypdf']
+          for p in pkgs:
+              spec = importlib.util.find_spec(p)
+              print(p, 'OK' if spec else 'MISSING')
+          PY
 
       - name: Run CI (lint + tests)
         env:
